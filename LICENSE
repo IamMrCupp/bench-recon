@@ -1,0 +1,18 @@
+Copyright (c) 2026 Aaron Cupp. All rights reserved.
+
+bench-recon is proprietary software. It is the system of record for sensitive
+security-engagement data (client and target identities, scope, authorization,
+findings, and credentials), and it is published source-closed on purpose.
+
+No permission is granted to any person to use, copy, modify, merge, publish,
+distribute, sublicense, or sell copies of this software or its source code, in
+whole or in part, except under a separate written agreement signed by the
+copyright holder.
+
+Unless required by applicable law or agreed to in writing, the software is
+provided "AS IS", without warranty of any kind, express or implied, including
+but not limited to the warranties of merchantability, fitness for a particular
+purpose, and noninfringement. In no event shall the copyright holder be liable
+for any claim, damages, or other liability, whether in an action of contract,
+tort, or otherwise, arising from, out of, or in connection with the software or
+the use or other dealings in the software.

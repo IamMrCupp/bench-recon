@@ -1,0 +1,21 @@
+# bench-recon with Docker Compose (or `podman compose`).
+#
+#   docker compose up -d      # http://127.0.0.1:8000/
+#
+# The data (database + artifact blobs, and later settings.env) lives in the
+# named volume mounted at /data.
+
+services:
+  recon:
+    # Pin a release (e.g. :0.1) rather than :latest for a deploy you don't babysit.
+    image: ghcr.io/iammrcupp/bench-recon:latest
+    ports:
+      # This machine only. For a tablet on the LAN, use "8000:8000". Never expose
+      # it publicly: it holds sensitive engagement records.
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - recon-data:/data
+    restart: unless-stopped
+
+volumes:
+  recon-data:

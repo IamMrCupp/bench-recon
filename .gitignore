@@ -1,0 +1,38 @@
+.venv/
+__pycache__/
+*.pyc
+*.log
+.env
+
+# Sensitive data. Live copies live on a cluster PVC, so these only ever appear
+# on a dev box — but this is the repo holding engagement records, so the patterns
+# cover every sidecar SQLite can produce. Production runs journal_mode=TRUNCATE
+# (NFS), which writes -journal; local dev may still use WAL, which writes -wal
+# and -shm.
+bench-recon.db
+bench-recon.db-journal
+bench-recon.db-wal
+bench-recon.db-shm
+artifacts/
+dist/
+build/
+*.egg-info/
+
+# claude-project-kit — managed block START
+# Local-only Claude Code state — installed globally via install-commands.sh
+# or scoped per-project, but never committed to the source-code repo.
+.claude/
+# claude-project-kit — managed block END
+
+# macOS
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

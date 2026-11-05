@@ -1,0 +1,58 @@
+[project]
+name = "bench-recon"
+dynamic = ["version"]
+description = "Self-hosted engagement/target system of record for hardware/automotive/IoT pentesting. Feeds benchhud a ref-safe projection."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "LicenseRef-Proprietary"
+license-files = ["LICENSE"]
+authors = [{ name = "Aaron Cupp" }]
+keywords = ["pentest", "recon", "hardware", "automotive", "iot", "bench", "self-hosted"]
+
+# Belt and braces: this package is the system of record for sensitive engagement
+# data (client/target identity, scope, findings, credentials) and is not open
+# source. The classifier makes PyPI refuse an upload outright.
+classifiers = ["Private :: Do Not Upload"]
+
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+]
+
+[project.scripts]
+bench-recon = "bench_recon.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/IamMrCupp/bench-recon"
+Issues = "https://github.com/IamMrCupp/bench-recon/issues"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "pytest>=8.3",
+    "httpx2>=2.7.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/bench_recon/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bench_recon"]
+
+# Kept deliberately identical to benchhud-intake's config so the two repos lint
+# the same way and muscle memory transfers between them.
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,0 +1,95 @@
+name: Image
+
+# Docs-only changes don't affect the image. Without these filters a README edit
+# costs several minutes of QEMU emulation to rebuild both architectures.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "LICENSE"
+      - ".github/pull_request_template.md"
+  pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "LICENSE"
+      - ".github/pull_request_template.md"
+  # release-please calls this with the new version after a release. A tag it
+  # pushes with the Actions token can't trigger a workflow on its own.
+  workflow_call:
+    inputs:
+      version:
+        description: "Release tag, e.g. v0.2.0"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  # The version keeps a release build from cancelling the latest build that the
+  # same push to main starts.
+  group: image-${{ github.ref }}-${{ inputs.version }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # QEMU emulates arm64 on the amd64 runner. Without it, buildx can only
+      # produce the runner's own architecture and the Pi cluster gets nothing.
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      # PRs build both architectures but never push — arch breakage is caught
+      # before merge, without publishing an image for an unreviewed branch.
+      - name: Log in to ghcr.io
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # :latest from main; :X.Y.Z and :X.Y for a release, so a deploy can pin.
+      - name: Tags
+        id: tags
+        run: |
+          image=ghcr.io/iammrcupp/bench-recon
+          version="${{ inputs.version }}"
+          if [ -n "$version" ]; then
+            v="${version#v}"
+            echo "tags=$image:$v,$image:${v%.*}" >> "$GITHUB_OUTPUT"
+            echo "first=$image:$v" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=$image:latest" >> "$GITHUB_OUTPUT"
+            echo "first=$image:latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build (and push on main)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.tags.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # The deploy target is a Raspberry Pi cluster. If linux/arm64 ever falls
+      # out of the platforms list above, this fails the build here rather than
+      # letting a pod fail to schedule on the cluster days later.
+      - name: Assert published manifest includes linux/arm64
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          manifest=$(docker buildx imagetools inspect ${{ steps.tags.outputs.first }})
+          echo "$manifest"
+          if ! grep -q 'linux/arm64' <<<"$manifest"; then
+            echo "::error::published manifest does not advertise linux/arm64"
+            exit 1
+          fi
+          echo "✓ linux/arm64 present in published manifest"
