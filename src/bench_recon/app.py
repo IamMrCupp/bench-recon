@@ -1,14 +1,33 @@
 """FastAPI application for bench-recon.
 
-Scaffold phase: just the health probe. The store, web UI, the deny-by-default
-auth gate and the benchhud projection land in later todos — but the app, the
-image and the deploy paths already say ``bench-recon``, so everything after this
-has a home.
+The web UI for the engagement/target system of record: create and list
+engagements, record targets, keep an append-only findings log, and store
+artifacts (firmware dumps, captures) on disk beside the database.
+
+**No auth gate yet.** The deny-by-default session/bearer middleware lands in a
+later todo; until then every route here is open, exactly as the scaffold phase
+left ``/healthz``. The benchhud projection and its read-only ``/api`` land later
+too — nothing here exposes an engagement to a machine. What this module does
+guarantee today is the list view's discipline: the engagements table shows only
+the four ref-safe fields, never a client or a target identity.
 """
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+import os
+from collections.abc import Iterator
+from pathlib import Path
+from typing import Annotated
+
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
+from fastapi.templating import Jinja2Templates
+
+from bench_recon.artifacts import ArtifactError, ArtifactStore
+from bench_recon.db import connect
+from bench_recon.schema import initialise
+from bench_recon.status import Severity, Status
+from bench_recon.store import Engagement, EngagementStore
 
 app = FastAPI(
     title="bench-recon",
@@ -18,14 +37,381 @@ app = FastAPI(
     ),
 )
 
+# Resolved relative to this module, not the working directory — the app runs from
+# a container image where cwd is not the repo root.
+TEMPLATES_DIR = Path(__file__).parent / "templates"
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
+
+#: Engagement fields the create form posts, used to echo a rejected attempt back
+#: so nothing typed is lost.
+_NEW_FIELDS = ("safe_title", "target_class", "client_ref", "scope", "authorization")
+
+
+def get_db_path() -> Path:
+    """Where the database lives.
+
+    On the cluster this points into the NFS PVC; locally it defaults to a file
+    beside the repo, which ``.gitignore`` already covers.
+    """
+    return Path(os.environ.get("BENCHRECON_DB_PATH", "bench-recon.db"))
+
+
+def get_store() -> Iterator[EngagementStore]:
+    """A store for one request.
+
+    A fresh connection per request rather than a shared one: FastAPI runs sync
+    endpoints in a threadpool, and SQLite connections aren't safe to share across
+    threads. ``initialise()`` short-circuits on an up-to-date ``user_version``, so
+    the database is always ready regardless of how the app was started.
+    """
+    with connect(get_db_path()) as conn:
+        initialise(conn)
+        yield EngagementStore(conn)
+
+
+StoreDep = Annotated[EngagementStore, Depends(get_store)]
+
+
+def get_artifacts_path() -> Path:
+    """Where artifact blobs live — beside the database on the NFS PVC in
+    production, a local directory otherwise (``.gitignore`` covers it)."""
+    return Path(os.environ.get("BENCHRECON_ARTIFACTS_PATH", "artifacts"))
+
+
+def get_artifact_store() -> ArtifactStore:
+    return ArtifactStore(get_artifacts_path())
+
+
+ArtifactStoreDep = Annotated[ArtifactStore, Depends(get_artifact_store)]
+
 
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
     """Liveness/readiness probe.
 
-    This route stays **unauthenticated** when the password gate lands — it's what
-    Kubernetes hits, and it must answer before a session can exist. It is the one
-    documented exception to "all routes protected", so it must never return
-    anything about an engagement or a target.
+    Stays **unauthenticated** when the password gate lands — it's what Kubernetes
+    hits, and it must answer before a session exists. The one documented
+    exception to "all routes protected", so it must never return anything about
+    an engagement or a target.
     """
     return {"status": "ok"}
+
+
+@app.get("/")
+def index() -> RedirectResponse:
+    """Straight to the engagement list — the app's home."""
+    return RedirectResponse(url="/engagements", status_code=303)
+
+
+@app.get("/engagements", response_class=HTMLResponse)
+def engagement_list(request: Request, store: StoreDep, status: str | None = None) -> HTMLResponse:
+    """The engagement queue.
+
+    Open engagements by default, built from the derived ``OPEN_STATUSES`` so a
+    newly added status can't quietly disappear. Only ref-safe fields render here.
+    """
+    try:
+        engagements = (
+            store.list_engagements(status=status)
+            if status
+            else store.list_engagements(open_only=True)
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+
+    return templates.TemplateResponse(
+        request=request,
+        name="engagements.html",
+        context={
+            "engagements": engagements,
+            "status": status,
+            "all_statuses": [s.value for s in Status],
+        },
+    )
+
+
+@app.get("/engagements/new", response_class=HTMLResponse)
+def new_engagement_form(request: Request) -> HTMLResponse:
+    """The create form."""
+    return _render_new(request)
+
+
+@app.post("/engagements")
+def create_engagement(
+    request: Request,
+    store: StoreDep,
+    safe_title: Annotated[str, Form()] = "",
+    target_class: Annotated[str, Form()] = "",
+    client_ref: Annotated[str, Form()] = "",
+    scope: Annotated[str, Form()] = "",
+    authorization: Annotated[str, Form()] = "",
+) -> Response:
+    """Open a new engagement from the submitted form.
+
+    Redirects on success so a refresh doesn't re-create. On a validation error
+    the form comes back with everything still in it.
+    """
+    submitted = {
+        "safe_title": safe_title,
+        "target_class": target_class,
+        "client_ref": client_ref,
+        "scope": scope,
+        "authorization": authorization,
+    }
+    try:
+        engagement = store.create_engagement(**submitted)
+    except ValueError as exc:
+        return _render_new(request, values=submitted, error=str(exc), status_code=400)
+    return RedirectResponse(url=f"/engagements/{engagement.ref}", status_code=303)
+
+
+@app.get("/engagements/{ref}", response_class=HTMLResponse)
+def engagement_detail(
+    request: Request, ref: str, store: StoreDep, artifact_store: ArtifactStoreDep
+) -> HTMLResponse:
+    """Everything about one engagement: the authorization banner, its sensitive
+    fields, targets, the findings log, and artifacts."""
+    engagement = _require_engagement(store, ref)
+    return _render_detail(request, store, engagement)
+
+
+@app.post("/engagements/{ref}")
+def edit_engagement(
+    request: Request,
+    ref: str,
+    store: StoreDep,
+    safe_title: Annotated[str, Form()] = "",
+    target_class: Annotated[str, Form()] = "",
+    client_ref: Annotated[str, Form()] = "",
+    scope: Annotated[str, Form()] = "",
+    authorization: Annotated[str, Form()] = "",
+) -> Response:
+    """Edit an engagement's fields (status moves through its own guarded path)."""
+    engagement = _require_engagement(store, ref)
+    try:
+        store.update_engagement(
+            ref,
+            safe_title=safe_title,
+            target_class=target_class,
+            client_ref=client_ref,
+            scope=scope,
+            authorization=authorization,
+        )
+    except ValueError as exc:
+        return _render_detail(request, store, engagement, error=str(exc), status_code=400)
+    return RedirectResponse(url=f"/engagements/{ref}", status_code=303)
+
+
+@app.post("/engagements/{ref}/status")
+def set_engagement_status(
+    request: Request, ref: str, store: StoreDep, status: Annotated[str, Form()] = ""
+) -> Response:
+    """Move an engagement through its lifecycle."""
+    engagement = _require_engagement(store, ref)
+    try:
+        store.set_status(ref, status)
+    except ValueError as exc:
+        return _render_detail(request, store, engagement, error=str(exc), status_code=400)
+    return RedirectResponse(url=f"/engagements/{ref}", status_code=303)
+
+
+@app.post("/engagements/{ref}/targets")
+def add_target(
+    request: Request,
+    ref: str,
+    store: StoreDep,
+    make: Annotated[str, Form()] = "",
+    model: Annotated[str, Form()] = "",
+    firmware_version: Annotated[str, Form()] = "",
+    interfaces: Annotated[str, Form()] = "",
+    pinout_notes: Annotated[str, Form()] = "",
+    serial: Annotated[str, Form()] = "",
+) -> Response:
+    """Add a device under test to an engagement."""
+    engagement = _require_engagement(store, ref)
+    try:
+        store.add_target(
+            ref,
+            make=make,
+            model=model,
+            firmware_version=firmware_version,
+            interfaces=interfaces,
+            pinout_notes=pinout_notes,
+            serial=serial,
+        )
+    except ValueError as exc:
+        return _render_detail(request, store, engagement, error=str(exc), status_code=400)
+    return RedirectResponse(url=f"/engagements/{ref}", status_code=303)
+
+
+@app.post("/engagements/{ref}/targets/{target_id}/delete")
+def delete_target(ref: str, target_id: int, store: StoreDep) -> Response:
+    """Remove a target. Removing one that's already gone is a no-op."""
+    _require_engagement(store, ref)
+    store.remove_target(ref, target_id)
+    return RedirectResponse(url=f"/engagements/{ref}", status_code=303)
+
+
+@app.post("/engagements/{ref}/findings")
+def add_finding(
+    request: Request,
+    ref: str,
+    store: StoreDep,
+    severity: Annotated[str, Form()] = "info",
+    title: Annotated[str, Form()] = "",
+    body: Annotated[str, Form()] = "",
+) -> Response:
+    """Append a finding. There is no edit or delete — the log is append-only."""
+    engagement = _require_engagement(store, ref)
+    try:
+        store.add_finding(ref, severity=severity, title=title, body=body)
+    except ValueError as exc:
+        return _render_detail(request, store, engagement, error=str(exc), status_code=400)
+    return RedirectResponse(url=f"/engagements/{ref}", status_code=303)
+
+
+@app.post("/engagements/{ref}/artifacts")
+def upload_artifact(
+    request: Request,
+    ref: str,
+    store: StoreDep,
+    artifact_store: ArtifactStoreDep,
+    kind: Annotated[str, Form()] = "other",
+    artifact: Annotated[UploadFile | None, File()] = None,
+) -> Response:
+    """Store an uploaded artifact and index it.
+
+    The bytes are written first, then the metadata row; if indexing fails the
+    file is removed, so an index row can never outlive its file and a stray file
+    can't accumulate silently. A rejected upload (empty, too large) comes back on
+    the page rather than as a 500.
+    """
+    engagement = _require_engagement(store, ref)
+
+    if artifact is None or not artifact.filename:
+        return _render_detail(
+            request, store, engagement, artifact_error="Choose a file to upload.", status_code=400
+        )
+
+    try:
+        stored = artifact_store.save(ref, artifact.filename, artifact.file.read())
+    except ArtifactError as exc:
+        return _render_detail(request, store, engagement, artifact_error=str(exc), status_code=400)
+
+    try:
+        store.record_artifact(
+            ref,
+            stored_name=stored.stored_name,
+            content_type=stored.content_type,
+            size=stored.size,
+            kind=kind,
+            original_name=artifact.filename,
+        )
+    except (ValueError, LookupError):
+        # The row didn't take — don't leave the bytes orphaned on disk.
+        artifact_store.delete(ref, stored.stored_name)
+        raise
+
+    return RedirectResponse(url=f"/engagements/{ref}", status_code=303)
+
+
+@app.get("/engagements/{ref}/artifacts/{artifact_id}/download")
+def download_artifact(
+    ref: str, artifact_id: int, store: StoreDep, artifact_store: ArtifactStoreDep
+) -> FileResponse:
+    """Stream a stored artifact.
+
+    **Served through the app on purpose.** A static mount on the artifact
+    directory would bypass the auth gate once it lands and put sensitive dumps
+    back on the open LAN. The name and ref pass through the store's path guards,
+    so a crafted name is a 404, never a file from elsewhere on the box.
+    """
+    _require_engagement(store, ref)
+    record = store.get_artifact(ref, artifact_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="no such artifact")
+
+    try:
+        path = artifact_store.artifact_path(ref, record.stored_name)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="no such artifact") from None
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="no such artifact")
+
+    return FileResponse(
+        path, media_type=record.content_type, filename=record.original_name or record.stored_name
+    )
+
+
+@app.post("/engagements/{ref}/artifacts/{artifact_id}/delete")
+def delete_artifact(
+    ref: str, artifact_id: int, store: StoreDep, artifact_store: ArtifactStoreDep
+) -> Response:
+    """Remove an artifact — both the index row and the bytes."""
+    _require_engagement(store, ref)
+    record = store.get_artifact(ref, artifact_id)
+    if record is not None:
+        store.remove_artifact(ref, artifact_id)
+        artifact_store.delete(ref, record.stored_name)
+    return RedirectResponse(url=f"/engagements/{ref}", status_code=303)
+
+
+# -- rendering helpers ------------------------------------------------------
+
+
+def _render_new(
+    request: Request,
+    values: dict[str, str] | None = None,
+    error: str | None = None,
+    status_code: int = 200,
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request=request,
+        name="engagement_new.html",
+        context={
+            "values": {name: (values or {}).get(name, "") for name in _NEW_FIELDS},
+            "error": error,
+        },
+        status_code=status_code,
+    )
+
+
+def _render_detail(
+    request: Request,
+    store: EngagementStore,
+    engagement: Engagement,
+    error: str | None = None,
+    artifact_error: str | None = None,
+    status_code: int = 200,
+) -> HTMLResponse:
+    ref = engagement.ref
+    return templates.TemplateResponse(
+        request=request,
+        name="engagement.html",
+        context={
+            "engagement": engagement,
+            "targets": store.list_targets(ref),
+            "findings": store.list_findings(ref),
+            "artifacts": store.list_artifacts(ref),
+            "all_statuses": [s.value for s in Status],
+            "all_severities": [s.value for s in Severity],
+            "error": error,
+            "artifact_error": artifact_error,
+        },
+        status_code=status_code,
+    )
+
+
+def _require_engagement(store: EngagementStore, ref: str) -> Engagement:
+    """Fetch an engagement for a URL path, or 404.
+
+    A malformed ref raises ``ValueError`` from the parser — that's a bad URL, so
+    it's a 404 rather than a 500.
+    """
+    try:
+        engagement = store.get_by_ref(ref)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="no such engagement") from None
+    if engagement is None:
+        raise HTTPException(status_code=404, detail="no such engagement")
+    return engagement

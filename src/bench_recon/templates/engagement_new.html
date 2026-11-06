@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}New engagement — bench-recon{% endblock %}
+{% block heading %}New engagement{% endblock %}
+
+{% block content %}
+  <p class="actions"><a href="/engagements">All engagements</a></p>
+
+  {% if error %}
+    <p class="error" role="alert">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/engagements">
+    <fieldset>
+      <legend>On the HUD</legend>
+      <p class="hint">
+        These two are the only fields that can ever reach benchhud. Keep them
+        free of any client or target identity — a safe title is
+        "Blue sedan head unit", never a client name.
+      </p>
+
+      <p>
+        <label for="safe_title">Safe title <span aria-hidden="true">*</span></label>
+        <input type="text" id="safe_title" name="safe_title" value="{{ values.safe_title }}"
+               autofocus required placeholder="Blue sedan head unit" />
+      </p>
+
+      <p>
+        <label for="target_class">Target class <span aria-hidden="true">*</span></label>
+        <input type="text" id="target_class" name="target_class" value="{{ values.target_class }}"
+               required placeholder="automotive-ecu" />
+        <span class="hint">A category, not an identity: automotive-ecu, iot-camera, router.</span>
+      </p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Sensitive — stays in this app</legend>
+      <p class="hint">Never projected to benchhud. Client, scope and the authorization that makes the work legal.</p>
+
+      <p>
+        <label for="client_ref">Client reference</label>
+        <input type="text" id="client_ref" name="client_ref" value="{{ values.client_ref }}"
+               placeholder="Acme Mobility (PO 4471)" />
+      </p>
+
+      <p>
+        <label for="scope">Scope</label>
+        <textarea id="scope" name="scope" rows="3"
+                  placeholder="In: the head unit and its CAN gateway. Out: everything else on the bus.">{{ values.scope }}</textarea>
+      </p>
+
+      <p>
+        <label for="authorization">Authorization</label>
+        <textarea id="authorization" name="authorization" rows="3"
+                  placeholder="Signed test authorization on file, dated 2026-11-01, covering the listed VIN.">{{ values.authorization }}</textarea>
+        <span class="hint">What makes touching this legal. Shown as a banner on the engagement page.</span>
+      </p>
+    </fieldset>
+
+    <p><button type="submit">Open engagement</button></p>
+  </form>
+{% endblock %}
