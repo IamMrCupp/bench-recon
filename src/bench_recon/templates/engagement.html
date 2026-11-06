@@ -29,6 +29,7 @@
   <section>
     <h2>Move it along</h2>
     <form method="post" action="/engagements/{{ engagement.ref }}/status">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <p>
         <label for="status">Status</label>
         <select id="status" name="status">
@@ -44,6 +45,7 @@
   <section>
     <h2>Engagement</h2>
     <form method="post" action="/engagements/{{ engagement.ref }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <fieldset>
         <legend>On the HUD</legend>
         <p>
@@ -86,6 +88,7 @@
             {% if t.interfaces %}<span class="prewrap">interfaces: {{ t.interfaces }}</span><br />{% endif %}
             {% if t.pinout_notes %}<span class="prewrap">pinout: {{ t.pinout_notes }}</span><br />{% endif %}
             <form method="post" action="/engagements/{{ engagement.ref }}/targets/{{ t.id }}/delete" class="inline-delete">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
               <button type="submit">remove</button>
             </form>
           </dd>
@@ -97,6 +100,7 @@
 
     <h3>Add a target</h3>
     <form method="post" action="/engagements/{{ engagement.ref }}/targets">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <p class="hint">A target needs at least a make or a model.</p>
       <p><label for="make">Make</label><input type="text" id="make" name="make" placeholder="Continental" /></p>
       <p><label for="model">Model</label><input type="text" id="model" name="model" placeholder="A2C-ECU-884" /></p>
@@ -130,6 +134,7 @@
 
     <h3>Log a finding</h3>
     <form method="post" action="/engagements/{{ engagement.ref }}/findings">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <p>
         <label for="severity">Severity</label>
         <select id="severity" name="severity">
@@ -164,6 +169,7 @@
               <td>{{ a.size | filesizeformat(binary=True) }}</td>
               <td>
                 <form method="post" action="/engagements/{{ engagement.ref }}/artifacts/{{ a.id }}/delete" class="inline-delete">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                   <button type="submit">remove</button>
                 </form>
               </td>
@@ -177,6 +183,7 @@
 
     <h3>Upload an artifact</h3>
     <form method="post" action="/engagements/{{ engagement.ref }}/artifacts" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <p>
         <label for="kind">Kind</label>
         <input type="text" id="kind" name="kind" value="firmware-dump" placeholder="firmware-dump, capture, photo, other" />

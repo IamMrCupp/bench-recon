@@ -13,13 +13,13 @@ shoulder, and it must never carry a client or a target identity.
 from __future__ import annotations
 
 import pytest
-from fastapi.testclient import TestClient
 
 from bench_recon.app import app, get_artifact_store, get_store
 from bench_recon.artifacts import ArtifactStore
 from bench_recon.db import connect
 from bench_recon.schema import initialise
 from bench_recon.store import EngagementStore
+from conftest import CsrfClient, sign_in
 
 
 @pytest.fixture
@@ -31,7 +31,8 @@ def ctx(tmp_path):
 
     app.dependency_overrides[get_store] = lambda: store
     app.dependency_overrides[get_artifact_store] = lambda: artifact_store
-    with TestClient(app) as client:
+    with CsrfClient(app) as client:
+        sign_in(client)
         yield client, store
     app.dependency_overrides.clear()
     conn.close()
