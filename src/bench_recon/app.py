@@ -36,6 +36,7 @@ from bench_recon import auth
 from bench_recon.artifacts import ArtifactError, ArtifactStore
 from bench_recon.auth import verify_password
 from bench_recon.db import connect
+from bench_recon.projection import project_artifact, project_engagement
 from bench_recon.ratelimit import RateLimiter
 from bench_recon.schema import initialise
 from bench_recon.status import Severity, Status
@@ -559,6 +560,45 @@ def delete_artifact(
         store.remove_artifact(ref, artifact_id)
         artifact_store.delete(ref, record.stored_name)
     return RedirectResponse(url=f"/engagements/{ref}", status_code=303)
+
+
+# -- benchhud API (read-only, ref-safe projection) --------------------------
+#
+# Gated by the ``/api/`` branch of require_session: a bearer token or a browser
+# session, 401 on failure. Every payload goes through bench_recon.projection, the
+# single choke point — these handlers never serialize an Engagement directly, so
+# a sensitive field can't ride along by accident.
+
+
+@app.get("/api/engagements")
+def api_list_engagements(store: StoreDep, status: str | None = None) -> list[dict]:
+    """The engagement queue benchhud pulls — ref-safe projection only.
+
+    Defaults to open (anything not closed). ``?status=`` filters; ``open`` is
+    accepted as an explicit synonym for the default.
+    """
+    try:
+        engagements = (
+            store.list_engagements(status=status)
+            if status and status != "open"
+            else store.list_engagements(open_only=True)
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    return [project_engagement(e) for e in engagements]
+
+
+@app.get("/api/engagements/{ref}")
+def api_get_engagement(ref: str, store: StoreDep) -> dict:
+    """One engagement by ref, or 404 — the projection, never the record."""
+    return project_engagement(_require_engagement(store, ref))
+
+
+@app.get("/api/engagements/{ref}/artifacts")
+def api_engagement_artifacts(ref: str, store: StoreDep) -> list[dict]:
+    """Artifact metadata for the capture panel — names/kinds/sizes, never bytes."""
+    _require_engagement(store, ref)
+    return [project_artifact(a) for a in store.list_artifacts(ref)]
 
 
 # -- rendering helpers ------------------------------------------------------
