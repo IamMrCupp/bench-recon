@@ -26,8 +26,9 @@ jobs:
           # A PAT/App token makes the release PR's pushes trigger CI, so it can
           # satisfy main's required lint-test + build checks. PRs opened with the
           # built-in GITHUB_TOKEN never trigger workflows. Falls back to
-          # github.token until the RELEASE_PLEASE_TOKEN secret exists.
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          # github.token until the RELEASE_PLEASE_PAT secret exists. Same secret
+          # name and token as mrcupp-project (the "release-please-cascade" PAT).
+          token: ${{ secrets.RELEASE_PLEASE_PAT || github.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
