@@ -1,0 +1,12 @@
+# The database and artifact blobs (firmware dumps, captures). The cluster's
+# default storage class unless your overlay sets storageClassName.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bench-recon-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

@@ -1,0 +1,19 @@
+# bench-recon: a kustomize base. Use it from an overlay (see README.md) to set
+# the namespace, the storage class, how the Service is exposed, and a pinned
+# image version. The maintainer's own cluster overlay lives in
+# cluster-management/apps/bench-recon.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+labels:
+  - pairs:
+      app.kubernetes.io/name: bench-recon
+    includeSelectors: false
+resources:
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+# secret.example.yaml is deliberately not listed: the real Secret holds the
+# password hash and is applied by hand, never committed.
+images:
+  - name: ghcr.io/iammrcupp/bench-recon
+    newTag: latest # pin a release in your overlay, e.g. newTag: "0.3"

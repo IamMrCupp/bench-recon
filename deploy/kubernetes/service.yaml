@@ -1,0 +1,14 @@
+# ClusterIP by default. This service holds sensitive engagement records (client
+# and target identity, scope, findings): expose it on your LAN (a LoadBalancer
+# IP, or a LAN-only ingress) in an overlay, never publicly.
+apiVersion: v1
+kind: Service
+metadata:
+  name: bench-recon
+spec:
+  selector:
+    app: bench-recon
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
