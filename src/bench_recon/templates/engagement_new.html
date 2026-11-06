@@ -11,6 +11,8 @@
   {% endif %}
 
   <form method="post" action="/engagements">
+    {# Deny-by-default: the middleware rejects any POST without this. #}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
     <fieldset>
       <legend>On the HUD</legend>
       <p class="hint">
