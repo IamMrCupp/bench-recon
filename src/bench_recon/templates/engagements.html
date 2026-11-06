@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Engagements — bench-recon{% endblock %}
+{% block heading %}{% if status %}{{ status }} engagements{% else %}Open engagements{% endif %}{% endblock %}
+
+{% block content %}
+  <p class="actions">
+    <a href="/engagements/new">New engagement</a>
+  </p>
+
+  {% if engagements %}
+    {# Only the four ref-safe fields show here, the same set the benchhud
+       projection is allowed to see: ref, safe title, target class, status. No
+       client, no target identity. This is the screen most likely to be left
+       open at a bench. #}
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Ref</th>
+          <th scope="col">Title</th>
+          <th scope="col">Class</th>
+          <th scope="col">Status</th>
+          <th scope="col">Opened</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in engagements %}
+          <tr>
+            <td class="ref"><a href="/engagements/{{ e.ref }}">{{ e.ref }}</a></td>
+            <td>{{ e.safe_title }}</td>
+            <td>{{ e.target_class }}</td>
+            <td>{{ e.status }}</td>
+            <td>{{ e.created_at[:10] }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">
+      {% if status %}
+        No {{ status }} engagements.
+      {% else %}
+        No open engagements. Nothing active on the bench.
+      {% endif %}
+    </p>
+  {% endif %}
+
+  <p class="filters">
+    {% if status %}<a href="/engagements">Open</a>{% else %}<strong>Open</strong>{% endif %}
+    {% for name in all_statuses %}
+      &middot;
+      {% if status == name %}
+        <strong>{{ name }}</strong>
+      {% else %}
+        <a href="/engagements?status={{ name }}">{{ name }}</a>
+      {% endif %}
+    {% endfor %}
+  </p>
+{% endblock %}

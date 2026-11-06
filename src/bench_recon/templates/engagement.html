@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}{{ engagement.ref }} — bench-recon{% endblock %}
+{% block heading %}{{ engagement.ref }} · {{ engagement.safe_title }}{% endblock %}
+
+{% block content %}
+  <p class="actions"><a href="/engagements">All engagements</a></p>
+
+  {% if error %}
+    <p class="error" role="alert">{{ error }}</p>
+  {% endif %}
+
+  {# The authorization banner, loud and at the top. "Am I allowed to touch this"
+     is the question this app exists to answer, so it is the first thing on the
+     page — and conspicuously flagged when the answer isn't recorded yet. #}
+  {% if engagement.authorization %}
+    <div class="banner" role="note">
+      <strong>Authorization on file</strong>{{ engagement.authorization }}
+    </div>
+  {% else %}
+    <div class="banner missing" role="alert">
+      <strong>No authorization recorded</strong>Do not touch the target until the
+      authorization for this engagement is recorded below.
+    </div>
+  {% endif %}
+
+  <p class="status-line"><strong>{{ engagement.status }}</strong></p>
+
+  <section>
+    <h2>Move it along</h2>
+    <form method="post" action="/engagements/{{ engagement.ref }}/status">
+      <p>
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          {% for name in all_statuses %}
+            <option value="{{ name }}" {% if engagement.status == name %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </p>
+      <p><button type="submit">Update status</button></p>
+    </form>
+  </section>
+
+  <section>
+    <h2>Engagement</h2>
+    <form method="post" action="/engagements/{{ engagement.ref }}">
+      <fieldset>
+        <legend>On the HUD</legend>
+        <p>
+          <label for="safe_title">Safe title</label>
+          <input type="text" id="safe_title" name="safe_title" value="{{ engagement.safe_title }}" required />
+        </p>
+        <p>
+          <label for="target_class">Target class</label>
+          <input type="text" id="target_class" name="target_class" value="{{ engagement.target_class }}" required />
+        </p>
+      </fieldset>
+      <fieldset>
+        <legend>Sensitive — stays in this app</legend>
+        <p>
+          <label for="client_ref">Client reference</label>
+          <input type="text" id="client_ref" name="client_ref" value="{{ engagement.client_ref or '' }}" />
+        </p>
+        <p>
+          <label for="scope">Scope</label>
+          <textarea id="scope" name="scope" rows="3">{{ engagement.scope or '' }}</textarea>
+        </p>
+        <p>
+          <label for="authorization">Authorization</label>
+          <textarea id="authorization" name="authorization" rows="3">{{ engagement.authorization or '' }}</textarea>
+        </p>
+      </fieldset>
+      <p><button type="submit">Save engagement</button></p>
+    </form>
+  </section>
+
+  <section>
+    <h2>Targets</h2>
+    {% if targets %}
+      <dl>
+        {% for t in targets %}
+          <dt>{{ (t.make ~ ' ' ~ t.model) | trim or t.make or t.model }}
+            {%- if t.firmware_version %} · fw {{ t.firmware_version }}{% endif %}</dt>
+          <dd>
+            {% if t.serial %}serial {{ t.serial }}<br />{% endif %}
+            {% if t.interfaces %}<span class="prewrap">interfaces: {{ t.interfaces }}</span><br />{% endif %}
+            {% if t.pinout_notes %}<span class="prewrap">pinout: {{ t.pinout_notes }}</span><br />{% endif %}
+            <form method="post" action="/engagements/{{ engagement.ref }}/targets/{{ t.id }}/delete" class="inline-delete">
+              <button type="submit">remove</button>
+            </form>
+          </dd>
+        {% endfor %}
+      </dl>
+    {% else %}
+      <p class="empty">No targets yet.</p>
+    {% endif %}
+
+    <h3>Add a target</h3>
+    <form method="post" action="/engagements/{{ engagement.ref }}/targets">
+      <p class="hint">A target needs at least a make or a model.</p>
+      <p><label for="make">Make</label><input type="text" id="make" name="make" placeholder="Continental" /></p>
+      <p><label for="model">Model</label><input type="text" id="model" name="model" placeholder="A2C-ECU-884" /></p>
+      <p><label for="firmware_version">Firmware version</label><input type="text" id="firmware_version" name="firmware_version" /></p>
+      <p><label for="serial">Serial</label><input type="text" id="serial" name="serial" /></p>
+      <p><label for="interfaces">Interfaces</label>
+        <textarea id="interfaces" name="interfaces" rows="2" placeholder="UART (3V3) J4, SWD TC2050, SPI flash W25Q128"></textarea></p>
+      <p><label for="pinout_notes">Pinout notes</label><textarea id="pinout_notes" name="pinout_notes" rows="2"></textarea></p>
+      <p><button type="submit">Add target</button></p>
+    </form>
+  </section>
+
+  <section>
+    <h2>Findings</h2>
+    {# Append-only: there is no edit or delete control, by design. A log you can
+       quietly rewrite isn't a log — corrections are new entries. #}
+    {% if findings %}
+      <ul class="log">
+        {% for f in findings %}
+          <li>
+            <span class="sev sev-{{ f.severity }}">{{ f.severity }}</span>
+            <strong>{{ f.title }}</strong>
+            {% if f.body %}<p class="body">{{ f.body }}</p>{% endif %}
+            <time datetime="{{ f.created_at }}">{{ f.created_at }}</time>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">No findings logged yet.</p>
+    {% endif %}
+
+    <h3>Log a finding</h3>
+    <form method="post" action="/engagements/{{ engagement.ref }}/findings">
+      <p>
+        <label for="severity">Severity</label>
+        <select id="severity" name="severity">
+          {% for name in all_severities %}
+            <option value="{{ name }}" {% if name == 'info' %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </p>
+      <p><label for="title">Title</label><input type="text" id="title" name="title" required placeholder="Unauthenticated UART root shell" /></p>
+      <p><label for="finding_body">Detail</label><textarea id="finding_body" name="body" rows="3"></textarea></p>
+      <p><button type="submit">Add finding</button></p>
+    </form>
+  </section>
+
+  <section>
+    <h2>Artifacts</h2>
+    {% if artifact_error %}
+      <p class="error" role="alert">{{ artifact_error }}</p>
+    {% endif %}
+
+    {% if artifacts %}
+      <table>
+        <thead>
+          <tr><th scope="col">Name</th><th scope="col">Kind</th><th scope="col">Type</th><th scope="col">Size</th><th scope="col"></th></tr>
+        </thead>
+        <tbody>
+          {% for a in artifacts %}
+            <tr>
+              <td><a href="/engagements/{{ engagement.ref }}/artifacts/{{ a.id }}/download">{{ a.original_name or a.stored_name }}</a></td>
+              <td>{{ a.kind }}</td>
+              <td>{{ a.content_type }}</td>
+              <td>{{ a.size | filesizeformat(binary=True) }}</td>
+              <td>
+                <form method="post" action="/engagements/{{ engagement.ref }}/artifacts/{{ a.id }}/delete" class="inline-delete">
+                  <button type="submit">remove</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty">No artifacts yet.</p>
+    {% endif %}
+
+    <h3>Upload an artifact</h3>
+    <form method="post" action="/engagements/{{ engagement.ref }}/artifacts" enctype="multipart/form-data">
+      <p>
+        <label for="kind">Kind</label>
+        <input type="text" id="kind" name="kind" value="firmware-dump" placeholder="firmware-dump, capture, photo, other" />
+      </p>
+      <p>
+        <label for="artifact">File</label>
+        <input type="file" id="artifact" name="artifact" />
+      </p>
+      <p><button type="submit">Upload</button></p>
+    </form>
+  </section>
+
+  <p class="timestamps">
+    Opened {{ engagement.created_at }} &middot; last touched {{ engagement.updated_at }}
+  </p>
+{% endblock %}
