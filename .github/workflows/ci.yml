@@ -36,3 +36,19 @@ jobs:
 
       - name: Pytest
         run: uv run pytest
+
+  # The Kubernetes base must keep rendering, and keep the two settings that
+  # protect the SQLite store (replicas: 1 + Recreate). kubectl is preinstalled
+  # on the runner, so this needs no extra tooling.
+  kustomize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Render deploy/kubernetes
+        run: |
+          set -euo pipefail
+          kubectl kustomize deploy/kubernetes > rendered.yaml
+          cat rendered.yaml
+          grep -q "replicas: 1" rendered.yaml || { echo "::error::replicas must be 1"; exit 1; }
+          grep -q "type: Recreate" rendered.yaml || { echo "::error::strategy must be Recreate"; exit 1; }
