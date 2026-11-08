@@ -1,18 +1,16 @@
 name: Image
 
-# Docs-only changes don't affect the image. Without these filters a README edit
+# Docs-only changes don't affect the image (LICENSE and NOTICES do: both ship in it). Without these filters a README edit
 # costs several minutes of QEMU emulation to rebuild both architectures.
 on:
   push:
     branches: [main]
     paths-ignore:
       - "**/*.md"
-      - "LICENSE"
       - ".github/pull_request_template.md"
   pull_request:
     paths-ignore:
       - "**/*.md"
-      - "LICENSE"
       - ".github/pull_request_template.md"
   # release-please calls this with the new version after a release. A tag it
   # pushes with the Actions token can't trigger a workflow on its own.

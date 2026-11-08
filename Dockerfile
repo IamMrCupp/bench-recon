@@ -2,6 +2,11 @@
 # linux/arm64. The CI workflow builds multi-arch; see .github/workflows/image.yml.
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
+LABEL org.opencontainers.image.title="bench-recon" \
+      org.opencontainers.image.description="Self-hosted engagement/target system of record for hardware/automotive/IoT pentesting." \
+      org.opencontainers.image.source="https://github.com/IamMrCupp/bench-recon" \
+      org.opencontainers.image.licenses="PolyForm-Small-Business-1.0.0"
+
 # UV_COMPILE_BYTECODE trades a little build time for faster cold starts, which
 # matters more than usual on a Pi. UV_LINK_MODE=copy avoids hardlink warnings
 # when the cache and the venv sit on different layers.
@@ -14,7 +19,10 @@ WORKDIR /app
 
 # Dependencies first, in their own layer: they change far less often than the
 # source, so an app-only edit reuses this layer instead of re-resolving.
-COPY pyproject.toml uv.lock README.md ./
+# LICENSE and NOTICES ride along with the project metadata: the PolyForm terms
+# require that anyone who gets a copy, an image pull included, gets the license
+# and its Required Notice line. They land at /app/LICENSE and /app/NOTICES.
+COPY pyproject.toml uv.lock README.md LICENSE NOTICES ./
 RUN uv sync --frozen --no-install-project --no-dev
 
 COPY src ./src
