@@ -36,8 +36,10 @@ RUN useradd --uid 1000 --create-home --shell /usr/sbin/nologin recon \
 USER recon
 
 # The data folder: the database and artifact blobs live here. The cluster and
-# compose both mount their volume at /data.
-ENV BENCHRECON_DATA_DIR=/data
+# compose both mount their volume at /data. Without these the app would write
+# into /app inside the container and lose everything on the next recreate.
+ENV BENCHRECON_DB_PATH=/data/bench-recon.db \
+    BENCHRECON_ARTIFACTS_PATH=/data/artifacts
 
 EXPOSE 8000
 
