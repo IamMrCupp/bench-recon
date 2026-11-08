@@ -33,7 +33,7 @@ uv sync
 uv run bench-recon set-password     # prompts twice, saves the hash to settings.env
 uv run bench-recon new-token        # optional: the bearer token benchhud's recon panel uses
 uv run bench-recon serve            # http://127.0.0.1:8000/
-curl -s http://127.0.0.1:8000/healthz   # {"status":"ok"}
+curl -s http://127.0.0.1:8000/healthz   # 200 from the unauthenticated probe
 ```
 
 Everything lands in a per-user data folder: `~/.local/share/bench-recon` on
