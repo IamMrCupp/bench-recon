@@ -186,3 +186,77 @@ def test_serve_uses_the_data_folder_and_stays_on_loopback(tmp_path, capsys) -> N
 def test_serve_warns_when_shared_on_the_lan(tmp_path, capsys) -> None:
     cli.cmd_serve(_args(tmp_path, "serve", "--host", "0.0.0.0"), run=lambda *a, **k: None)
     assert "anyone on this network" in capsys.readouterr().err
+
+
+# --- non-interactive flags (bench-setup drives these; secrets never in argv) ---------
+
+
+def _stdin(monkeypatch, text: str) -> None:
+    import io
+
+    monkeypatch.setattr(sys, "stdin", io.StringIO(text))
+
+
+def _never_ask(_prompt: str) -> str:
+    raise AssertionError("a non-interactive flag must not prompt")
+
+
+def test_set_password_stdin_reads_one_line_without_prompting(tmp_path, monkeypatch, capsys):
+    _stdin(monkeypatch, "from a pipe\nsecond line ignored\n")
+    code = cli.cmd_set_password(_args(tmp_path, "set-password", "--stdin"), _never_ask)
+    assert code == 0
+    stored = settings.read_settings(tmp_path / "settings.env")[auth.ENV_VAR]
+    assert auth.verify_password("from a pipe", stored)
+    assert capsys.readouterr().out == ""  # stdout stays clean for a pipeline
+
+
+def test_set_password_stdin_keeps_inner_spaces_and_strips_only_the_newline(
+    tmp_path, monkeypatch
+) -> None:
+    _stdin(monkeypatch, " two  spaces \r\n")
+    assert cli.cmd_set_password(_args(tmp_path, "set-password", "--stdin"), _never_ask) == 0
+    stored = settings.read_settings(tmp_path / "settings.env")[auth.ENV_VAR]
+    assert auth.verify_password(" two  spaces ", stored)
+
+
+@pytest.mark.parametrize("piped", ["", "\n", "   \n"])
+def test_set_password_stdin_refuses_a_blank(tmp_path, monkeypatch, capsys, piped) -> None:
+    _stdin(monkeypatch, piped)
+    assert cli.cmd_set_password(_args(tmp_path, "set-password", "--stdin"), _never_ask) == 1
+    assert not (tmp_path / "settings.env").exists()
+    assert "blank" in capsys.readouterr().err
+
+
+def test_set_password_generate_prints_it_once_and_saves_its_hash(tmp_path, capsys) -> None:
+    code = cli.cmd_set_password(_args(tmp_path, "set-password", "--generate"), _never_ask)
+    assert code == 0
+    out = capsys.readouterr().out
+    assert out.count("\n") == 1  # the password, alone, once
+    password = out.strip()
+    assert len(password) >= 20
+    stored = settings.read_settings(tmp_path / "settings.env")[auth.ENV_VAR]
+    assert auth.verify_password(password, stored)
+    assert password not in (tmp_path / "settings.env").read_text()
+
+
+def test_set_password_generate_differs_each_time(tmp_path, capsys) -> None:
+    args = _args(tmp_path, "set-password", "--generate")
+    cli.cmd_set_password(args, _never_ask)
+    first = capsys.readouterr().out
+    cli.cmd_set_password(args, _never_ask)
+    assert capsys.readouterr().out != first
+
+
+def test_stdin_and_generate_are_exclusive(tmp_path) -> None:
+    with pytest.raises(SystemExit) as exit_:
+        _args(tmp_path, "set-password", "--stdin", "--generate")
+    assert exit_.value.code == 2
+
+
+def test_new_token_print_writes_it_and_prints_only_the_token(tmp_path, capsys) -> None:
+    assert cli.main(["--data-dir", str(tmp_path), "new-token", "--print"]) == 0
+    captured = capsys.readouterr()
+    token = captured.out.strip()
+    assert captured.out == token + "\n"
+    assert captured.err == ""
+    assert settings.read_settings(tmp_path / "settings.env")[auth.API_TOKEN_ENV_VAR] == token

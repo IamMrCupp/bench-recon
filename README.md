@@ -42,6 +42,10 @@ prints it, and `--data-dir` (or `BENCHRECON_DATA_DIR`) points it elsewhere. It
 holds `settings.env` (owner-only, `KEY=value` lines using the variable names
 below), `bench-recon.db` and `artifacts/`.
 
+For scripts and `bench-setup`, which never put a secret in argv:
+`set-password --stdin` reads it once from a pipe, `set-password --generate`
+makes one and prints it once, and `new-token --print` prints only the token.
+
 **Environment variables always win** over `settings.env`, so a Kubernetes Secret
 or an explicit `BENCHRECON_PASSWORD_HASH=…` behaves as before.
 `BENCHRECON_DB_PATH` and `BENCHRECON_ARTIFACTS_PATH` move the database and the
