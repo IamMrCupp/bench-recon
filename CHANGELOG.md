@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.1](https://github.com/IamMrCupp/bench-recon/compare/v0.2.0...v0.2.1) (2026-11-08)
+
+
+### Bug Fixes
+
+* **deploy:** use a placeholder LoadBalancer IP in the overlay example ([291f1b7](https://github.com/IamMrCupp/bench-recon/commit/291f1b723f776afc7452669aece2306f0e893879))
+* **docker:** store data on the /data volume and pass the password hash in compose ([7ca6884](https://github.com/IamMrCupp/bench-recon/commit/7ca688402795cf05a86f72a08f8a5cccffdfb041))
+
+
+### Documentation
+
+* bring the README, deploy guide and stale code comments up to date ([920f177](https://github.com/IamMrCupp/bench-recon/commit/920f1770289afea7a1dab8fe6cde9ab6607d7223))
+* **contributing:** add CONTRIBUTING.md with DCO sign-off and contribution grant ([c98c7b9](https://github.com/IamMrCupp/bench-recon/commit/c98c7b95645267db2db8785c673e3397206107a5))
+* **legal:** add NOTICES listing third-party runtime dependency licenses ([35fd823](https://github.com/IamMrCupp/bench-recon/commit/35fd8237988ef5e0c4673d4baa7fec430212f91e))
+
 ## [0.2.0](https://github.com/IamMrCupp/bench-recon/compare/v0.1.0...v0.2.0) (2026-11-06)
 
 
