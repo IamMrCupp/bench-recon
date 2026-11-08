@@ -32,7 +32,7 @@ from fastapi.responses import (
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
-from bench_recon import auth
+from bench_recon import __version__, auth
 from bench_recon.artifacts import ArtifactError, ArtifactStore
 from bench_recon.auth import verify_password
 from bench_recon.db import connect
@@ -216,8 +216,12 @@ def healthz() -> dict[str, str]:
     Unauthenticated: it's what Kubernetes hits, and it must answer before a
     session exists. That makes it an exception to "all routes protected", so it
     must never return anything about an engagement or a target.
+
+    It does name the app and its version, so a setup tool can tell bench-recon
+    on its port from whatever else might be listening there. Neither is secret,
+    and probes ignore the body.
     """
-    return {"status": "ok"}
+    return {"status": "ok", "app": "bench-recon", "version": __version__}
 
 
 @app.get("/")
