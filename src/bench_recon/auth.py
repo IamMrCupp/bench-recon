@@ -93,8 +93,10 @@ def configured_hash() -> str:
     if not value:
         raise RuntimeError(
             f"{ENV_VAR} is not set. This service holds sensitive engagement records "
-            f"and refuses to start without a password. Generate one with:\n"
-            f"    uv run python -m bench_recon.auth"
+            f"and refuses to start without a password. Set one with:\n"
+            f"    bench-recon set-password\n"
+            f"or, for a Kubernetes Secret, print a hash with:\n"
+            f"    python -m bench_recon.auth"
         )
     return value
 
