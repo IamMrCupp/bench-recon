@@ -3,9 +3,9 @@
     bench-recon serve            # http://127.0.0.1:8000/
     bench-recon version
 
-The login password and API token land with the auth gate (a later todo); until
-then ``serve`` just runs the app. The container runs ``serve`` so a settings
-file written into the data volume will be picked up once that exists.
+``serve`` refuses to start unless ``BENCHRECON_PASSWORD_HASH`` is set; generate
+one with ``python -m bench_recon.auth``. The container image runs ``serve`` on
+0.0.0.0:8000 with its data on the ``/data`` volume.
 """
 
 from __future__ import annotations

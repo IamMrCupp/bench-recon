@@ -136,7 +136,7 @@ _CREATE_FINDINGS_INDEX = (
 )
 
 # Artifact *metadata*. The blobs (firmware dumps, captures) live on disk beside
-# the DB, stored traversal-proof — that store lands with the web UI. This table
+# the DB, stored traversal-proof by artifacts.ArtifactStore. This table
 # is the index of what's been captured. SENSITIVE: even names and sizes are, so
 # only names/sizes/kind/status ever reach benchhud, never contents.
 _CREATE_ARTIFACTS = """

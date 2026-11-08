@@ -8,8 +8,9 @@ image automation — lives in `cluster-management/apps/bench-recon`.)
 
 ## Before you apply
 
-1. **Pull access.** The image is a private GHCR package. Create a pull secret in
-   your namespace and add it in your overlay (see the example below).
+1. **The image.** `ghcr.io/iammrcupp/bench-recon` is a public, multi-arch
+   (amd64 and arm64) GHCR package, so no pull secret is needed. Pin a release
+   tag in your overlay rather than following `latest`.
 2. **The Secret.** Fill in `secret.example.yaml` and apply it by hand. The app
    won't start without `BENCHRECON_PASSWORD_HASH`.
 
@@ -24,13 +25,10 @@ resources:
   - https://github.com/IamMrCupp/bench-recon//deploy/kubernetes?ref=main
 images:
   - name: ghcr.io/iammrcupp/bench-recon
-    newTag: "0.3"                         # pin a release
+    newTag: "0.2"                         # pin a release
 patches:
   - target: {kind: Deployment, name: bench-recon}
     patch: |-
-      - op: add
-        path: /spec/template/spec/imagePullSecrets
-        value: [{name: ghcr-pull}]
       # The volume is NFS: use the NFS-safe SQLite settings.
       - op: replace
         path: /spec/template/spec/containers/0/env/2/value
