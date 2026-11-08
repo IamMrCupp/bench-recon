@@ -1,0 +1,36 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ]; then
+    if ! getent passwd bench-recon >/dev/null; then
+        useradd --system --user-group --home-dir /var/lib/bench-recon \
+            --no-create-home --shell /usr/sbin/nologin bench-recon
+    fi
+    install -d -o bench-recon -g bench-recon -m 0750 /var/lib/bench-recon
+fi
+
+# Dormant by design: bench-recon holds client engagement data, so unlike
+# benchhud-intake and bench-parts this package never enables or starts the
+# service. The owner turns it on. On an upgrade, a service the owner already
+# runs is restarted onto the new code; one that's off stays off.
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload >/dev/null 2>&1 || true
+    if [ -n "$2" ]; then
+        systemctl try-restart bench-recon.service >/dev/null 2>&1 || true
+    fi
+fi
+
+if [ -z "$2" ]; then
+    cat <<'MSG'
+
+bench-recon is installed but off. It holds client engagement data, so nothing
+runs or stores data until you turn it on. Run `bench-setup`, or by hand:
+
+    sudo bench-recon set-password
+    sudo systemctl enable --now bench-recon
+
+It listens on 127.0.0.1:8403 only. Keep it on this machine.
+
+MSG
+fi
+exit 0
