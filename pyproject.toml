@@ -5,7 +5,7 @@ description = "Self-hosted engagement/target system of record for hardware/autom
 readme = "README.md"
 requires-python = ">=3.12"
 license = "PolyForm-Small-Business-1.0.0"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "NOTICES"]
 authors = [{ name = "Aaron Cupp" }]
 keywords = ["pentest", "recon", "hardware", "automotive", "iot", "bench", "self-hosted"]
 
