@@ -7,26 +7,48 @@ test), which accumulate an **append-only findings log** and on-disk **artifacts*
 (firmware dumps, captures). A small FastAPI + SQLite web app and LAN REST API,
 built as a sibling to [benchhud-intake](https://github.com/IamMrCupp/benchhud-intake).
 
-> **Sensitive by design.** This service holds client and target identities,
-> scope and authorization text, findings, and credentials. It is **private,
-> LAN-only, and never publicly exposed.** [benchhud](https://github.com/IamMrCupp/benchhud)
+> **Sensitive by design.** A running bench-recon holds client and target
+> identities, scope and authorization text, findings, and credentials, so every
+> deployment must keep it **LAN-only and never publicly exposed** — no public
+> ingress, no port forward. [benchhud](https://github.com/IamMrCupp/benchhud)
 > is handed only a `ref` and a **ref-safe projection** (`ref`, safe title, target
-> class, status) over `/api/engagements` — the sensitive detail never leaves this
+> class, status) over `/api/engagements`. The sensitive detail never leaves the
 > app, so nothing identifying can reach a surface that composites to a stream.
+> The code is public; your engagement data stays on your bench.
 
 ## Status
 
-Early scaffold. The health probe is up; the store, web UI, the deny-by-default
-auth gate, the benchhud projection, and the cluster deploy land in subsequent
-pull requests (see the per-repo plan).
+Usable. Engagements, targets, the append-only findings log and the artifact
+store work through the web UI. Everything sits behind a deny-by-default auth
+gate (a scrypt-hashed shared password, a bearer token for `/api/`, CSRF on every
+form, a login throttle). benchhud reads the ref-safe projection over a read-only
+`/api/engagements` API. The schema is at version 1.
 
 ## Run it locally
 
+The app refuses to start without a password hash, so make one first:
+
 ```bash
 uv sync
-uv run bench-recon serve        # http://127.0.0.1:8000/
-curl -s http://127.0.0.1:8000/healthz   # {"status":"ok"}
+uv run python -m bench_recon.auth            # prompts twice, prints the line below
+export BENCHRECON_PASSWORD_HASH='scrypt$...'  # paste it, in single quotes
+uv run bench-recon serve                     # http://127.0.0.1:8000/
+curl -s http://127.0.0.1:8000/healthz        # {"status":"ok"}
 ```
+
+The database (`bench-recon.db`) and the `artifacts/` folder land in the current
+directory unless `BENCHRECON_DB_PATH` and `BENCHRECON_ARTIFACTS_PATH` say
+otherwise. Both are git-ignored.
+
+Optional settings:
+
+| Variable | What it does |
+|---|---|
+| `BENCHRECON_SESSION_SECRET` | Signs the session cookie. Derived from the password hash if unset, so changing the password logs everyone out. |
+| `BENCHRECON_API_TOKEN` | The bearer token for `/api/`, used by benchhud's recon panel. Unset means bearer auth is refused and `/api/` only answers a signed-in session. |
+| `BENCHRECON_COOKIE_SECURE` | `1` once TLS fronts the app. Leave it off over plain HTTP, or login silently fails. |
+| `BENCHRECON_SQLITE_NFS` | `1` when the database sits on NFS; it swaps WAL for NFS-safe journaling. |
+| `BENCHRECON_ARTIFACT_MAX_BYTES` | Upload size cap for artifacts, in bytes. Defaults to 256 MiB. |
 
 ## Develop
 
@@ -39,11 +61,36 @@ uv run pytest
 
 ## Deploy
 
-An arm64 image publishes to `ghcr.io/iammrcupp/bench-recon` on merge to `main`.
-It runs as a fourth app on the `rpi-k8s` cluster — LAN-only, single writer
-(`replicas: 1` + `strategy: Recreate`), SQLite on an NFS PVC. Manifests live in
-`cluster-management/apps/bench-recon/`.
+Each release publishes a multi-arch image (linux/amd64 and linux/arm64) to
+`ghcr.io/iammrcupp/bench-recon`, tagged with the version (`0.2.0`), the minor
+line (`0.2`) and `latest`. It carries LICENSE and NOTICES at `/app`, and keeps
+its data on a volume mounted at `/data`.
 
-## Licence
+- **Docker Compose:** [`compose.yaml`](compose.yaml) runs it on this machine.
+  The comments at the top cover the password hash.
+- **Kubernetes:** [`deploy/kubernetes/`](deploy/kubernetes/) is a kustomize
+  base. Its README covers the overlay you'll need.
 
-Proprietary — all rights reserved. See [LICENSE](LICENSE).
+Whichever you use, keep it single-writer (one replica: SQLite has one writer)
+and LAN-only.
+
+The maintainer's own deployment runs on a Raspberry Pi Kubernetes cluster: SQLite on
+an NFS volume, a LAN-only LoadBalancer IP, Flux image automation, and a nightly
+backup.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Every commit needs a DCO sign-off
+(`git commit -s`), and anything large starts with an issue.
+
+## License
+
+Source-available under the [PolyForm Small Business License 1.0.0](https://polyformproject.org/licenses/small-business/1.0.0/)
+— see [LICENSE](LICENSE). Free to use, modify and distribute if your company has
+fewer than 100 people and under $1M in annual revenue, which covers personal use
+and most small shops. Above that, a commercial licence is required — get in touch.
+
+Note this is *source-available*, not open source: the code is readable and
+freely usable within those limits, but it isn't an OSI-approved licence.
+
+Third-party dependencies and their licenses are listed in [NOTICES](NOTICES).

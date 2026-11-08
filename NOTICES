@@ -1,0 +1,59 @@
+bench-recon — third-party notices
+
+bench-recon itself is licensed under the PolyForm Small Business License 1.0.0
+(see LICENSE). It is built on, and its container image includes, the following
+third-party components. Each remains under its own license, listed below.
+
+-------------------------------------------------------------------------------
+
+FastAPI
+  https://github.com/fastapi/fastapi
+  License: MIT
+
+Uvicorn (installed with the [standard] extra)
+  https://github.com/Kludex/uvicorn
+  License: BSD 3-Clause
+
+Jinja2
+  https://github.com/pallets/jinja
+  License: BSD 3-Clause
+
+python-multipart
+  https://github.com/Kludex/python-multipart
+  License: Apache License 2.0
+
+itsdangerous
+  https://github.com/pallets/itsdangerous
+  License: BSD 3-Clause
+
+-------------------------------------------------------------------------------
+
+Transitive runtime dependencies
+
+These are pulled in by the packages above and ship in the container image.
+
+  annotated-doc        MIT
+  annotated-types      MIT
+  anyio                MIT
+  click                BSD 3-Clause
+  h11                  MIT
+  httptools            MIT
+  idna                 BSD 3-Clause
+  MarkupSafe           BSD 3-Clause
+  opentelemetry-api    Apache License 2.0
+  pydantic             MIT
+  pydantic-core        MIT
+  python-dotenv        BSD 3-Clause
+  PyYAML               MIT
+  Starlette            BSD 3-Clause
+  typing-extensions    Python Software Foundation License 2.0
+  typing-inspection    MIT
+  uvloop               MIT or Apache License 2.0 (dual-licensed)
+  watchfiles           MIT
+  websockets           BSD 3-Clause
+
+-------------------------------------------------------------------------------
+
+Licenses were taken from each package's installed metadata and license file
+for the versions pinned in uv.lock. Each package's full license text ships in
+its installed dist-info directory.

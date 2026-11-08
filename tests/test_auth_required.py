@@ -2,7 +2,7 @@
 
 ``test_every_route_redirects_when_signed_out`` is the point. The middleware
 itself is a dozen lines; what's hard is guaranteeing that a route added in a
-later todo — the projection endpoints, a future upload path — can't quietly ship
+later can't quietly ship
 unprotected. This enumerates the app's own routing table, so it fails on a new
 unlisted route rather than trusting anyone to remember.
 """
@@ -59,8 +59,7 @@ def test_every_route_redirects_when_signed_out(path) -> None:
 
 def test_api_namespace_is_401_not_a_redirect() -> None:
     """The machine-facing namespace answers a service, not a browser: a 401 it
-    can read, never a 303 to an HTML login page. (Endpoints land in todo 5; the
-    gate is already in place.)"""
+    can read, never a 303 to an HTML login page."""
     response = client.get("/api/engagements", follow_redirects=False)
     assert response.status_code == 401
 

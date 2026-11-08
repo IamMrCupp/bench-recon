@@ -1,14 +1,24 @@
 # bench-recon with Docker Compose (or `podman compose`).
 #
+# The app refuses to start without BENCHRECON_PASSWORD_HASH. Generate it in a
+# checkout with `uv run python -m bench_recon.auth`, then put the printed line in
+# a `.env` file next to this one, in single quotes so compose leaves the `$`
+# characters alone:
+#
+#   BENCHRECON_PASSWORD_HASH='scrypt$16384$8$1$...'
+#
+# Optional in the same file: BENCHRECON_SESSION_SECRET, and BENCHRECON_API_TOKEN
+# (the bearer token benchhud's recon panel uses). `.env` is git-ignored. Then:
+#
 #   docker compose up -d      # http://127.0.0.1:8000/
 #
-# The data (database + artifact blobs, and later settings.env) lives in the
-# named volume mounted at /data.
+# The data (database + artifact blobs) lives in the named volume mounted at /data.
 
 services:
   recon:
-    # Pin a release (e.g. :0.1) rather than :latest for a deploy you don't babysit.
+    # Pin a release (e.g. :0.2) rather than :latest for a deploy you don't babysit.
     image: ghcr.io/iammrcupp/bench-recon:latest
+    env_file: .env
     ports:
       # This machine only. For a tablet on the LAN, use "8000:8000". Never expose
       # it publicly: it holds sensitive engagement records.

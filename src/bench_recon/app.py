@@ -4,12 +4,12 @@ The web UI for the engagement/target system of record: create and list
 engagements, record targets, keep an append-only findings log, and store
 artifacts (firmware dumps, captures) on disk beside the database.
 
-**No auth gate yet.** The deny-by-default session/bearer middleware lands in a
-later todo; until then every route here is open, exactly as the scaffold phase
-left ``/healthz``. The benchhud projection and its read-only ``/api`` land later
-too — nothing here exposes an engagement to a machine. What this module does
-guarantee today is the list view's discipline: the engagements table shows only
-the four ref-safe fields, never a client or a target identity.
+**Deny by default.** Every route needs a session except ``/login`` and
+``/healthz``. The machine-facing ``/api/`` namespace takes a bearer token or a
+session, and every state-changing form carries a CSRF token. The ``/api/``
+routes return only the ref-safe projection (``projection.py``), and the
+engagements list view is held to the same four fields: never a client or a
+target identity.
 """
 
 from __future__ import annotations
@@ -53,8 +53,8 @@ app = FastAPI(
 #: The only paths reachable without a session.
 #:
 #: **Deny by default.** Protection is applied to everything and lifted here,
-#: rather than added per-route — the inverse arrangement means a route added in a
-#: later todo ships unprotected the moment somebody forgets a decorator, and a
+#: rather than added per-route — the inverse arrangement means a route added
+#: later ships unprotected the moment somebody forgets a decorator, and a
 #: silent leak of sensitive engagement data is a much worse failure than a route
 #: that's visibly unreachable.
 #:
@@ -87,8 +87,8 @@ async def require_session(request: Request, call_next):
     """Demand a session for everything outside ``EXEMPT_PATHS``, and a valid CSRF
     token on every state-changing request.
 
-    Both checks are deny-by-default for the same reason: a form added in a later
-    todo should be safe without anyone remembering to opt it in. ``samesite=lax``
+    Both checks are deny-by-default for the same reason: a form added later
+    should be safe without anyone remembering to opt it in. ``samesite=lax``
     on the session cookie already blocks cross-site POSTs in current browsers;
     this is the server-side half, because one mechanism enforced by the client
     isn't where you want the only defence for sensitive records.
@@ -98,8 +98,7 @@ async def require_session(request: Request, call_next):
     # The machine-facing API is gated too — by a bearer token or a session, since
     # benchhud can't do the browser login. On failure it gets a 401 status code,
     # not a 302 to an HTML page a service can't use. Still deny-by-default: a
-    # second gate, never an exemption. (The /api routes themselves land in the
-    # projection todo; this branch is ready for them.)
+    # second gate, never an exemption.
     if path.startswith("/api/"):
         if auth.valid_api_token(request.headers.get("authorization")) or request.session.get(
             "authenticated"
@@ -214,10 +213,9 @@ ArtifactStoreDep = Annotated[ArtifactStore, Depends(get_artifact_store)]
 def healthz() -> dict[str, str]:
     """Liveness/readiness probe.
 
-    Stays **unauthenticated** when the password gate lands — it's what Kubernetes
-    hits, and it must answer before a session exists. The one documented
-    exception to "all routes protected", so it must never return anything about
-    an engagement or a target.
+    Unauthenticated: it's what Kubernetes hits, and it must answer before a
+    session exists. That makes it an exception to "all routes protected", so it
+    must never return anything about an engagement or a target.
     """
     return {"status": "ok"}
 

@@ -451,7 +451,7 @@ class EngagementStore:
             for r in rows
         ]
 
-    # -- artifacts (metadata; the on-disk blob store lands with the web UI) --
+    # -- artifacts (metadata; the bytes live in artifacts.ArtifactStore) --
 
     def record_artifact(
         self,
@@ -466,8 +466,8 @@ class EngagementStore:
         """Record that an artifact was stored for an engagement.
 
         This writes the index row only; the caller is responsible for the bytes on
-        disk (the traversal-proof artifact store lands with the web UI). Kept
-        together in one transaction there so a row can't outlive its file.
+        disk (``artifacts.ArtifactStore``, traversal-proof). The upload route
+        writes the file first and deletes it again if this row fails.
         """
         engagement_id = self._engagement_id(ref)
         stored_name = (stored_name or "").strip()
