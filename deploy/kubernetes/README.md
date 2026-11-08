@@ -48,7 +48,7 @@ patches:
         value: LoadBalancer
       - op: add
         path: /spec/loadBalancerIP
-        value: 192.168.1.50
+        value: 192.0.2.50  # placeholder: a free address on your LAN
 ```
 
 Then `kubectl apply -k overlays/bench`.
