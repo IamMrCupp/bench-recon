@@ -26,19 +26,27 @@ form, a login throttle). benchhud reads the ref-safe projection over a read-only
 
 ## Run it locally
 
-The app refuses to start without a password hash, so make one first:
+The app refuses to start without a password, so set one first:
 
 ```bash
 uv sync
-uv run python -m bench_recon.auth            # prompts twice, prints the line below
-export BENCHRECON_PASSWORD_HASH='scrypt$...'  # paste it, in single quotes
-uv run bench-recon serve                     # http://127.0.0.1:8000/
-curl -s http://127.0.0.1:8000/healthz        # {"status":"ok"}
+uv run bench-recon set-password     # prompts twice, saves the hash to settings.env
+uv run bench-recon new-token        # optional: the bearer token benchhud's recon panel uses
+uv run bench-recon serve            # http://127.0.0.1:8000/
+curl -s http://127.0.0.1:8000/healthz   # 200 from the unauthenticated probe
 ```
 
-The database (`bench-recon.db`) and the `artifacts/` folder land in the current
-directory unless `BENCHRECON_DB_PATH` and `BENCHRECON_ARTIFACTS_PATH` say
-otherwise. Both are git-ignored.
+Everything lands in a per-user data folder: `~/.local/share/bench-recon` on
+Linux, `~/Library/Application Support/bench-recon` on macOS. `bench-recon paths`
+prints it, and `--data-dir` (or `BENCHRECON_DATA_DIR`) points it elsewhere. It
+holds `settings.env` (owner-only, `KEY=value` lines using the variable names
+below), `bench-recon.db` and `artifacts/`.
+
+**Environment variables always win** over `settings.env`, so a Kubernetes Secret
+or an explicit `BENCHRECON_PASSWORD_HASH=…` behaves as before.
+`BENCHRECON_DB_PATH` and `BENCHRECON_ARTIFACTS_PATH` move the database and the
+artifact folder on their own. For a hash to paste into a Secret,
+`uv run python -m bench_recon.auth` prompts twice and prints the line.
 
 Optional settings:
 
