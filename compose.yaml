@@ -10,7 +10,7 @@
 # Optional in the same file: BENCHRECON_SESSION_SECRET, and BENCHRECON_API_TOKEN
 # (the bearer token benchhud's recon panel uses). `.env` is git-ignored. Then:
 #
-#   docker compose up -d      # http://127.0.0.1:8000/
+#   docker compose up -d      # http://127.0.0.1:8403/
 #
 # The data (database + artifact blobs) lives in the named volume mounted at /data.
 
@@ -20,9 +20,11 @@ services:
     image: ghcr.io/iammrcupp/bench-recon:latest
     env_file: .env
     ports:
-      # This machine only. For a tablet on the LAN, use "8000:8000". Never expose
-      # it publicly: it holds sensitive engagement records.
-      - "127.0.0.1:8000:8000"
+      # This machine only: host 127.0.0.1:8403 → the container's 8000. 8403 is
+      # bench-recon's port in the bench suite (intake 8401, parts 8402), so the
+      # three can share a host. Keep the 127.0.0.1: it holds client engagement
+      # records, and nothing else on the network needs to reach it.
+      - "127.0.0.1:8403:8000"
     volumes:
       - recon-data:/data
     restart: unless-stopped
