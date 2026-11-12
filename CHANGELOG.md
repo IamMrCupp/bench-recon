@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/IamMrCupp/bench-recon/compare/v0.2.1...v0.3.0) (2026-11-12)
+
+
+### Features
+
+* **cli:** add set-password --stdin/--generate and new-token --print ([13628e1](https://github.com/IamMrCupp/bench-recon/commit/13628e1f536da1722656acc3e2abc9fe2d27c209))
+* **cli:** add set-password, new-token, paths and settings.env ([54a9b4a](https://github.com/IamMrCupp/bench-recon/commit/54a9b4a2c41322a888c9b16d7ccb1e7168ca57f4))
+* **compose:** publish on 127.0.0.1:8403 by default ([794aa65](https://github.com/IamMrCupp/bench-recon/commit/794aa656eddde17c75f784f5765a7358c3486c04))
+* **deb:** package bench-recon as a dormant systemd service ([d4e8480](https://github.com/IamMrCupp/bench-recon/commit/d4e84808328319593d26a476147bc650be2a4427))
+* **healthz:** name the app and its version ([2cc0e43](https://github.com/IamMrCupp/bench-recon/commit/2cc0e4309947b9cec2a68ac2ac6ca27566008438))
+
 ## [0.2.1](https://github.com/IamMrCupp/bench-recon/compare/v0.2.0...v0.2.1) (2026-11-08)
 
 

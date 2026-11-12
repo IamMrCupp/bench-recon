@@ -7,6 +7,6 @@ recon data lives; benchhud is only ever handed a ``ref`` and a ref-safe
 projection, never the sensitive detail.
 """
 
-__version__ = "0.2.1"  # x-release-please-version
+__version__ = "0.3.0"  # x-release-please-version
 
 __all__ = ["__version__"]
