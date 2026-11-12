@@ -16,6 +16,8 @@ bench-recon.db-shm
 artifacts/
 dist/
 build/
+# Generated for the .deb build from uv.lock (CI); never committed.
+requirements.txt
 *.egg-info/
 
 # claude-project-kit — managed block START

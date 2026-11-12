@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # A run by hand also builds the arm64 .deb (under QEMU, slow).
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -52,3 +54,140 @@ jobs:
           cat rendered.yaml
           grep -q "replicas: 1" rendered.yaml || { echo "::error::replicas must be 1"; exit 1; }
           grep -q "type: Recreate" rendered.yaml || { echo "::error::strategy must be Recreate"; exit 1; }
+
+  # The headless-Linux install: a .deb that runs bench-recon as a systemd
+  # service, the same shape as bench-parts' and benchhud-intake's. Built in
+  # ubuntu:26.04 (the bench's release) for amd64, and the Raspberry Pis' arm64
+  # on a run by hand. The newest tar can't stat the venv's symlinks under QEMU,
+  # so the container only stages the tree and the runner packs it.
+  deb:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["amd64","arm64"]' || '["amd64"]') }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-qemu-action@v3
+        if: matrix.arch == 'arm64'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Locked requirements
+        run: uv export --frozen --no-dev --no-hashes --no-emit-project -q > requirements.txt
+
+      - name: Stage the package tree (ubuntu:26.04)
+        run: |
+          docker run --rm --platform linux/${{ matrix.arch }} \
+            -e DEB_ROOT=/src/build/debroot -e STAGE_ONLY=1 \
+            -v "$PWD":/src -w /src ubuntu:26.04 sh packaging/deb/build.sh
+
+      - name: Pack it
+        run: |
+          mkdir -p dist
+          dpkg-deb --build --root-owner-group build/debroot dist/
+          dpkg-deb --info dist/*.deb
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bench-recon-deb-${{ matrix.arch }}
+          path: dist/*.deb
+          if-no-files-found: error
+
+  # Install it on a clean ubuntu:26.04 running systemd as PID 1 and check it the
+  # way an owner would meet it: installed, but dormant until turned on.
+  deb-verify:
+    needs: deb
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: bench-recon-deb-amd64
+          path: dist
+
+      - name: Boot ubuntu:26.04 with systemd
+        run: |
+          printf '%s\n' \
+            'FROM ubuntu:26.04' \
+            'RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends systemd systemd-sysv curl dbus && rm -rf /var/lib/apt/lists/*' \
+            'STOPSIGNAL SIGRTMIN+3' \
+            'CMD ["/sbin/init"]' > Dockerfile.systemd
+          docker build -q -t sd -f Dockerfile.systemd .
+          docker run -d --name sd --privileged --cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:rw sd
+          for _ in $(seq 30); do
+            state=$(docker exec sd systemctl is-system-running 2>/dev/null || true)
+            case "$state" in running|degraded) break ;; esac
+            sleep 1
+          done
+          echo "systemd: $state"
+
+      - name: apt install the package
+        run: |
+          # Not /tmp: systemd mounts a tmpfs over it, hiding what docker cp puts there.
+          docker exec sd mkdir -p /root/dist
+          docker cp dist/. sd:/root/dist/
+          docker exec sd sh -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq /root/dist/*.deb' | tee install.log
+          grep -q "bench-recon is installed but off" install.log
+
+      - name: It installed a dormant service (unit present, not enabled, not running)
+        run: |
+          docker exec sd sh -ec '
+            id bench-recon
+            test "$(stat -c %U:%a /var/lib/bench-recon)" = "bench-recon:750"
+            test -f /lib/systemd/system/bench-recon.service
+            systemctl cat bench-recon >/dev/null
+            enabled=$(systemctl is-enabled bench-recon || true)
+            echo "is-enabled: $enabled"
+            test "$enabled" = disabled
+            active=$(systemctl is-active bench-recon || true)
+            echo "is-active: $active"
+            test "$active" = inactive
+            test ! -e /var/lib/bench-recon/settings.env
+            test ! -e /var/lib/bench-recon/bench-recon.db
+            bench-recon paths | grep -q "/var/lib/bench-recon/settings.env"
+          '
+
+      - name: With no password it refuses once and doesn't restart-loop
+        run: |
+          docker exec sd sh -c 'systemctl start bench-recon; sleep 10'
+          props=$(docker exec sd systemctl show bench-recon -p ActiveState -p ExecMainStatus -p NRestarts)
+          echo "$props"
+          echo "$props" | grep -q "ExecMainStatus=2"
+          echo "$props" | grep -q "NRestarts=0"
+          echo "$props" | grep -q "ActiveState=failed"
+
+      - name: Turned on, it serves on 127.0.0.1:8403 as its own user
+        run: |
+          docker exec sd sh -ec '
+            printf "ci password\nci password\n" | bench-recon set-password
+            test "$(stat -c %U:%a /var/lib/bench-recon/settings.env)" = "root:600"
+            systemctl reset-failed bench-recon
+            systemctl enable --now bench-recon
+            test "$(systemctl is-enabled bench-recon)" = enabled
+            for _ in $(seq 30); do curl -fsS http://127.0.0.1:8403/healthz && break; sleep 1; done
+            echo
+            pid=$(systemctl show -p MainPID --value bench-recon)
+            test "$(stat -c %U /proc/$pid)" = bench-recon
+            # Loopback only: nothing listens on a wildcard address.
+            ! grep -qE ":20D3 .* 0A " /proc/net/tcp6 || { echo "listening on IPv6"; exit 1; }
+            grep -E "^ *[0-9]+: 0100007F:20D3 .* 0A " /proc/net/tcp
+          ' || { docker exec sd journalctl -u bench-recon --no-pager | tail -30; exit 1; }
+          docker exec sd systemctl status bench-recon --no-pager | head -12
+          # The sandbox must not quietly loosen: hold it to bench-parts' hardened
+          # baseline.
+          docker exec sd systemd-analyze security bench-recon --no-pager | tail -1
+          score=$(docker exec sd systemd-analyze security bench-recon --no-pager | tail -1 | grep -oE '[0-9]+[.][0-9]+' | head -1)
+          echo "exposure score: $score (max allowed: 4.0)"
+          awk -v s="$score" 'BEGIN { exit !(s <= 4.0) }'
+
+      - name: An upgrade leaves a dormant install dormant
+        run: |
+          docker exec sd sh -ec '
+            systemctl disable --now bench-recon
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --reinstall /root/dist/*.deb
+            test "$(systemctl is-enabled bench-recon || true)" = disabled
+            test "$(systemctl is-active bench-recon || true)" = inactive
+          '

@@ -62,6 +62,24 @@ Optional settings:
 | `BENCHRECON_SQLITE_NFS` | `1` when the database sits on NFS; it swaps WAL for NFS-safe journaling. |
 | `BENCHRECON_ARTIFACT_MAX_BYTES` | Upload size cap for artifacts, in bytes. Defaults to 256 MiB. |
 
+## Install as a service (Debian/Ubuntu)
+
+CI builds a `.deb` (Ubuntu 26.04, amd64; arm64 on a run by hand) that runs
+bench-recon as a hardened systemd service on `127.0.0.1:8403`. It installs
+**dormant**: the unit is neither enabled nor started, because this service
+holds client engagement data and nothing should run or store data until you
+say so. Turn it on with `bench-setup`, or by hand:
+
+```bash
+sudo apt install ./bench-recon_*.deb
+sudo bench-recon set-password
+sudo systemctl enable --now bench-recon
+```
+
+Its data and `settings.env` live in `/var/lib/bench-recon` (`settings.env` is
+root-only; systemd reads it). With no password the service exits 2 and stays
+down rather than restart-looping. Removing the package keeps the data.
+
 ## Develop
 
 ```bash

@@ -1,0 +1,6 @@
+#!/bin/sh
+# The .deb's command: the same `bench-recon`, defaulting to the service's
+# data folder so `sudo bench-recon set-password` configures the service.
+: "${BENCHRECON_DATA_DIR:=/var/lib/bench-recon}"
+export BENCHRECON_DATA_DIR
+exec /opt/bench-recon/bin/bench-recon "$@"
