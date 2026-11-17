@@ -61,6 +61,7 @@ Optional settings:
 | `BENCHRECON_COOKIE_SECURE` | `1` once TLS fronts the app. Leave it off over plain HTTP, or login silently fails. |
 | `BENCHRECON_SQLITE_NFS` | `1` when the database sits on NFS; it swaps WAL for NFS-safe journaling. |
 | `BENCHRECON_ARTIFACT_MAX_BYTES` | Upload size cap for artifacts, in bytes. Defaults to 256 MiB. |
+| `BENCHRECON_SOURCE_URL` | Where the **Source** link in every page's footer points. Defaults to this repository. If you run a modified copy for other people, point it at your own code — that's the offer of source AGPL section 13 asks for. It wants an `http://` or `https://` address; anything else is ignored and the link stays on this repository. |
 
 ## Install as a service (Debian/Ubuntu)
 
