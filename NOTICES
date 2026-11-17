@@ -1,7 +1,7 @@
 bench-recon — third-party notices
 
-bench-recon itself is licensed under the PolyForm Small Business License 1.0.0
-(see LICENSE). It is built on, and its container image includes, the following
+bench-recon itself is licensed under the GNU Affero General Public License v3.0
+or later (see LICENSE). It is built on, and its container image includes, the following
 third-party components. Each remains under its own license, listed below.
 
 -------------------------------------------------------------------------------

@@ -4,13 +4,13 @@ dynamic = ["version"]
 description = "Self-hosted engagement/target system of record for hardware/automotive/IoT pentesting. Feeds benchhud a ref-safe projection."
 readme = "README.md"
 requires-python = ">=3.12"
-license = "PolyForm-Small-Business-1.0.0"
+license = "AGPL-3.0-or-later"
 license-files = ["LICENSE", "NOTICES"]
 authors = [{ name = "Aaron Cupp" }]
 keywords = ["pentest", "recon", "hardware", "automotive", "iot", "bench", "self-hosted"]
 
-# Belt and braces: this package is source-available, not open source, and is
-# distributed from GitHub only. The classifier makes PyPI refuse an upload outright.
+# Belt and braces: this package is distributed from GitHub only. The classifier
+# makes PyPI refuse an upload outright.
 classifiers = ["Private :: Do Not Upload"]
 
 dependencies = [
