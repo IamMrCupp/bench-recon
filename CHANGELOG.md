@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/IamMrCupp/bench-recon/compare/v0.3.2...v0.4.0) (2026-11-17)
+
+
+### Features
+
+* **app:** show a Source link in the footer of every page ([a6d6e73](https://github.com/IamMrCupp/bench-recon/commit/a6d6e7348e7bf316038f33974441f85f6165f448))
+
+
+### Documentation
+
+* **readme:** say the source link wants an http(s) address ([a6d6e73](https://github.com/IamMrCupp/bench-recon/commit/a6d6e7348e7bf316038f33974441f85f6165f448))
+
 ## [0.3.2](https://github.com/IamMrCupp/bench-recon/compare/v0.3.1...v0.3.2) (2026-11-17)
 
 
