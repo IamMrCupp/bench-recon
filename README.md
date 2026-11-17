@@ -64,7 +64,7 @@ Optional settings:
 
 ## Install as a service (Debian/Ubuntu)
 
-CI builds a `.deb` (Ubuntu 26.04, amd64; arm64 on a run by hand) that runs
+Each release carries a `.deb` for Ubuntu 26.04, amd64 and arm64, that runs
 bench-recon as a hardened systemd service on `127.0.0.1:8403`. It installs
 **dormant**: the unit is neither enabled nor started, because this service
 holds client engagement data and nothing should run or store data until you

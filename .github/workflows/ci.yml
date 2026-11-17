@@ -4,14 +4,31 @@ on:
   push:
     branches: [main]
   pull_request:
+    # `labeled` so adding the `full-ci` label re-runs with the arm64 .deb too.
+    types: [opened, synchronize, reopened, labeled]
   # A run by hand also builds the arm64 .deb (under QEMU, slow).
   workflow_dispatch:
+  # A release builds its .debs with exactly these jobs and checks, at the
+  # release tag (release-assets.yml). Empty ref = the event's own commit.
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: false
+        default: ""
+      # A release passes true: build both architectures.
+      full:
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # The workflow name keeps a release build (called from release-please) and the
+  # normal build of the same push to main from cancelling each other.
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -19,6 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Install uv
         run: |
@@ -46,6 +65,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Render deploy/kubernetes
         run: |
@@ -64,9 +85,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["amd64","arm64"]' || '["amd64"]') }}
+        arch: ${{ fromJSON((inputs.full || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'full-ci')) && '["amd64","arm64"]' || '["amd64"]') }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
 
       - uses: docker/setup-qemu-action@v3
         if: matrix.arch == 'arm64'
