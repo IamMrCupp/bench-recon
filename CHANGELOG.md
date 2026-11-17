@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.1](https://github.com/IamMrCupp/bench-recon/compare/v0.3.0...v0.3.1) (2026-11-17)
+
+
+### Bug Fixes
+
+* **license:** relicense to AGPL-3.0-or-later ([1064a37](https://github.com/IamMrCupp/bench-recon/commit/1064a37ce631e7a3f15673db65af805d183fb133))
+
+
+### Documentation
+
+* **readme:** the bench apt repo and bench-suite as a way to install ([78e6322](https://github.com/IamMrCupp/bench-recon/commit/78e6322151ffca5a0d08860f9be131fad65e79c3))
+
 ## [0.3.0](https://github.com/IamMrCupp/bench-recon/compare/v0.2.1...v0.3.0) (2026-11-12)
 
 
