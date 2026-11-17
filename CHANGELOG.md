@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/IamMrCupp/bench-recon/compare/v0.3.1...v0.3.2) (2026-11-17)
+
+
+### Documentation
+
+* **readme:** the unified installer on a Mac ([#47](https://github.com/IamMrCupp/bench-recon/issues/47)) ([a72a16b](https://github.com/IamMrCupp/bench-recon/commit/a72a16b9e704805268e33da5ce96c2becdc9e44f))
+
 ## [0.3.1](https://github.com/IamMrCupp/bench-recon/compare/v0.3.0...v0.3.1) (2026-11-17)
 
 
