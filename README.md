@@ -76,6 +76,23 @@ sudo bench-recon set-password
 sudo systemctl enable --now bench-recon
 ```
 
+**Or from the bench apt repo (optional).** The same package is in the signed
+apt repo that [bench-suite](https://github.com/IamMrCupp/bench-suite#readme)
+publishes, so updates arrive with `apt upgrade`:
+
+```bash
+sudo curl -fsSLo /usr/share/keyrings/bench-archive-keyring.gpg https://apt.yolorepair.com/bench-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/bench-archive-keyring.gpg] https://apt.yolorepair.com stable main" \
+  | sudo tee /etc/apt/sources.list.d/bench.list
+sudo apt update
+sudo apt install bench-recon
+```
+
+If the same machine runs the rest of the bench, `sudo apt install bench-suite`
+installs the lot, and `sudo bench-setup` does the setup above for every service
+at once: one password, a token each, and the URLs and tokens written into
+benchhud's config. `bench-setup doctor` checks the result. bench-recon stays off there too until you say yes to it.
+
 Its data and `settings.env` live in `/var/lib/bench-recon` (`settings.env` is
 root-only; systemd reads it). With no password the service exits 2 and stays
 down rather than restart-looping. Removing the package keeps the data.
