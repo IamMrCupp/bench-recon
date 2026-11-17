@@ -8,10 +8,10 @@ on:
     paths-ignore:
       - "**/*.md"
       - ".github/pull_request_template.md"
+  # No path filter here: `build` is a required check, and a check that never
+  # runs can never pass, so a docs-only pull request could not be merged. The
+  # job runs and skips the build instead (below).
   pull_request:
-    paths-ignore:
-      - "**/*.md"
-      - ".github/pull_request_template.md"
   # release-please calls this with the new version after a release. A tag it
   # pushes with the Actions token can't trigger a workflow on its own.
   workflow_call:
@@ -36,11 +36,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Two commits: on a pull request that's the merge commit and its
+          # first parent, enough to list what the pull request changes.
+          fetch-depth: 2
+
+      # A pull request that only touches Markdown can't change the image.
+      # Say so and skip the build, so the required check still reports.
+      - name: Docs only?
+        id: changes
+        if: github.event_name == 'pull_request'
+        run: |
+          files=$(git diff --name-only HEAD^1 HEAD)
+          echo "$files"
+          if echo "$files" | grep -qvE '\.md$'; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+            echo "Only Markdown changed: skipping the image build."
+          fi
 
       # QEMU emulates arm64 on the amd64 runner. Without it, buildx can only
       # produce the runner's own architecture and the Pi cluster gets nothing.
       - uses: docker/setup-qemu-action@v3
+        if: steps.changes.outputs.docs_only != 'true'
       - uses: docker/setup-buildx-action@v3
+        if: steps.changes.outputs.docs_only != 'true'
 
       # PRs build both architectures but never push — arch breakage is caught
       # before merge, without publishing an image for an unreviewed branch.
@@ -68,6 +89,7 @@ jobs:
           fi
 
       - name: Build (and push on main)
+        if: steps.changes.outputs.docs_only != 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
