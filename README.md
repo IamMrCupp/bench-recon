@@ -93,6 +93,11 @@ installs the lot, and `sudo bench-setup` does the setup above for every service
 at once: one password, a token each, and the URLs and tokens written into
 benchhud's config. `bench-setup doctor` checks the result. bench-recon stays off there too until you say yes to it.
 
+On a Mac there's no bench-recon app. It runs in a container from bench-suite's
+`compose.yaml`, off until you turn it on with
+`bench-setup services --compose --recon`. `bench-setup` comes from the
+[Homebrew tap](https://github.com/IamMrCupp/homebrew-bench); see [bench-suite](https://github.com/IamMrCupp/bench-suite#on-a-mac).
+
 Its data and `settings.env` live in `/var/lib/bench-recon` (`settings.env` is
 root-only; systemd reads it). With no password the service exits 2 and stays
 down rather than restart-looping. Removing the package keeps the data.
