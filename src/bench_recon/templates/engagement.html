@@ -24,7 +24,7 @@
     </div>
   {% endif %}
 
-  <p class="status-line"><strong>{{ engagement.status }}</strong></p>
+  <p class="status-line"><span class="pill{% if engagement.status == 'closed' %} closed{% endif %}">{{ engagement.status }}</span></p>
 
   <section>
     <h2>Move it along</h2>
@@ -89,7 +89,7 @@
             {% if t.pinout_notes %}<span class="prewrap">pinout: {{ t.pinout_notes }}</span><br />{% endif %}
             <form method="post" action="/engagements/{{ engagement.ref }}/targets/{{ t.id }}/delete" class="inline-delete">
               <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-              <button type="submit">remove</button>
+              <button type="submit" class="quiet danger">remove</button>
             </form>
           </dd>
         {% endfor %}
@@ -170,7 +170,7 @@
               <td>
                 <form method="post" action="/engagements/{{ engagement.ref }}/artifacts/{{ a.id }}/delete" class="inline-delete">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                  <button type="submit">remove</button>
+                  <button type="submit" class="quiet danger">remove</button>
                 </form>
               </td>
             </tr>

@@ -13,6 +13,7 @@
        projection is allowed to see: ref, safe title, target class, status. No
        client, no target identity. This is the screen most likely to be left
        open at a bench. #}
+    <div class="table-card">
     <table>
       <thead>
         <tr>
@@ -29,12 +30,13 @@
             <td class="ref"><a href="/engagements/{{ e.ref }}">{{ e.ref }}</a></td>
             <td>{{ e.safe_title }}</td>
             <td>{{ e.target_class }}</td>
-            <td>{{ e.status }}</td>
+            <td><span class="pill{% if e.status == 'closed' %} closed{% endif %}">{{ e.status }}</span></td>
             <td>{{ e.created_at[:10] }}</td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% else %}
     <p class="empty">
       {% if status %}
