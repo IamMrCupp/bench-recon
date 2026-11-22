@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/IamMrCupp/bench-recon/compare/v0.4.0...v0.5.0) (2026-11-22)
+
+
+### Features
+
+* **web:** burnwright look with light, dark and custom themes ([90c880e](https://github.com/IamMrCupp/bench-recon/commit/90c880e54c4f3179a4524bd82c221b3d85cb6087))
+* **web:** burnwright look with light, dark and custom themes ([b9d2aac](https://github.com/IamMrCupp/bench-recon/commit/b9d2aac818c26df7563d7b464bfd318ab84be6a2))
+
 ## [0.4.0](https://github.com/IamMrCupp/bench-recon/compare/v0.3.2...v0.4.0) (2026-11-17)
 
 
