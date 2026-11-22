@@ -63,6 +63,33 @@ Optional settings:
 | `BENCHRECON_ARTIFACT_MAX_BYTES` | Upload size cap for artifacts, in bytes. Defaults to 256 MiB. |
 | `BENCHRECON_SOURCE_URL` | Where the **Source** link in every page's footer points. Defaults to this repository. If you run a modified copy for other people, point it at your own code — that's the offer of source AGPL section 13 asks for. It wants an `http://` or `https://` address; anything else is ignored and the link stays on this repository. |
 
+## Looks and themes
+
+Same look as benchhud, burnwright and benchhud-intake — same palette, same
+panels. **Appearance**, at the foot of every page, picks System, Light or Dark,
+and the choice sticks in that browser.
+
+For your own, drop a burnwright theme file into the `themes` folder in the data
+folder (`bench-recon paths` shows where), or point `BENCHRECON_THEMES_DIR` at a
+folder of them. It shows up in the Appearance list on the next page load. The
+format is burnwright's, so a theme you've written for it works here unchanged:
+
+```json
+{
+  "name": "Amber terminal",
+  "base": "dark",
+  "colors": { "bg": "#120d02", "panel": "#1b1404", "fg": "#ffcf70", "accent": "#ffb000" }
+}
+```
+
+`base` is `"light"` or `"dark"`; anything you leave out comes from it. Colours
+only — hex, `rgb()` or `hsl()` — with burnwright's names (`bg`, `panel`,
+`border`, `fg`, `muted`, `control-bg`, `control-border`, `control-hover`,
+`accent`, `accent-soft`, `danger`, `danger-soft`, `warning`, `warning-soft`,
+`warning-border`, `ok`, `ok-soft`). The authorization banner and the severity
+badges use the warning and danger colours. A file that can't be used is named
+at the foot of the page, to anyone signed in, with the reason.
+
 ## Install as a service (Debian/Ubuntu)
 
 Each release carries a `.deb` for Ubuntu 26.04, amd64 and arm64, that runs

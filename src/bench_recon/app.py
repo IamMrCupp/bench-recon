@@ -41,6 +41,7 @@ from bench_recon.ratelimit import RateLimiter
 from bench_recon.schema import initialise
 from bench_recon.status import Severity, Status
 from bench_recon.store import Engagement, EngagementStore
+from bench_recon.themes import load_themes, themes_dir
 
 app = FastAPI(
     title="bench-recon",
@@ -188,6 +189,25 @@ def _csrf_context(request: Request) -> dict[str, object]:
         # so it is safe on the sign-in page.
         "source_url": source_url(),
         "license_name": LICENSE_NAME,
+        **_theme_context(),
+    }
+
+
+def _theme_context() -> dict[str, object]:
+    """The custom themes for the Appearance choice, read fresh on each page.
+
+    Colours only, checked in ``bench_recon.themes``, so they're safe on the
+    sign-in page too. Which files failed, and the folder's path, are shown only
+    to someone signed in (see base.html).
+    """
+    folder = themes_dir()
+    themes, broken = load_themes(folder)
+    problems = [f"{b.file}: {b.reason}" for b in broken]
+    problems += [f"{t.id}: {note}" for t in themes for note in t.ignored]
+    return {
+        "themes": [t.as_json() for t in themes],
+        "theme_problems": problems,
+        "themes_folder": str(folder),
     }
 
 
